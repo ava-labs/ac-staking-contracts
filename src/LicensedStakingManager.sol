@@ -66,29 +66,29 @@ abstract contract LicensedStakingManager is
      * @notice Initialize the ERC721 token staking manager
      * @param settings Initial settings for the PoS validator manager
      * @param token The ERC721 token to be staked
-     * @param licenseToStakeConversionFactor The conversion factor for license tokens to stake amount
+     * @param licenseToStakeConversionFactor_ The conversion factor for license tokens to stake amount
      */
     // solhint-disable-next-line func-name-mixedcase
     function __LicensedStakingManager_init(
         StakingManagerSettings calldata settings,
         IERC721 token,
-        uint256 licenseToStakeConversionFactor
+        uint256 licenseToStakeConversionFactor_
     ) internal onlyInitializing {
         __StakingManager_init(settings);
-        __LicensedStakingManager_init_unchained(token, licenseToStakeConversionFactor);
+        __LicensedStakingManager_init_unchained(token, licenseToStakeConversionFactor_);
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function __LicensedStakingManager_init_unchained(
         IERC721 token,
-        uint256 licenseToStakeConversionFactor
+        uint256 licenseToStakeConversionFactor_
     ) internal onlyInitializing {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
         if (address(token) == address(0)) {
             revert ZeroAddress();
         }
         $._token = token;
-        $._licenseToStakeConversionFactor = licenseToStakeConversionFactor;
+        $._licenseToStakeConversionFactor = licenseToStakeConversionFactor_;
     }
 
     /**
@@ -349,5 +349,12 @@ abstract contract LicensedStakingManager is
         uint256 licenseTokenId
     ) external view returns (bytes32) {
         return _getLicensedStakingManagerStorage()._tokenToDelegation[licenseTokenId];
+    }
+
+    /**
+     * @notice See {ILicensedStakingManager-licenseToStakeConversionFactor}
+     */
+    function licenseToStakeConversionFactor() external view returns (uint256) {
+        return _getLicensedStakingManagerStorage()._licenseToStakeConversionFactor;
     }
 }

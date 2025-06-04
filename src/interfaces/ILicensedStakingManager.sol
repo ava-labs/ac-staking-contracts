@@ -6,11 +6,7 @@
 pragma solidity 0.8.25;
 
 import {IERC721} from "@openzeppelin/contracts@5.0.2/token/ERC721/IERC721.sol";
-import {PChainOwner} from "@validator-manager/interfaces/IACP99Manager.sol";
-import {
-    IStakingManager,
-    StakingManagerSettings
-} from "@validator-manager/interfaces/IStakingManager.sol";
+import {IStakingManager} from "@validator-manager/interfaces/IStakingManager.sol";
 
 /**
  * @dev Interface for the LicensedStakingManager contract.
@@ -84,4 +80,10 @@ interface ILicensedStakingManager is IStakingManager {
     function getLicenseTokenDelegator(
         uint256 licenseTokenId
     ) external view returns (bytes32);
+
+    /**
+     * @notice Get the conversion factor from license tokens to stake amount
+     * @return The conversion factor
+     */
+    function licenseToStakeConversionFactor() external view returns (uint256);
 }

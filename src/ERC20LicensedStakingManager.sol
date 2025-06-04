@@ -6,7 +6,6 @@
 pragma solidity 0.8.25;
 
 import {LicensedStakingManager} from "./LicensedStakingManager.sol";
-import {StakingManager} from "./StakingManager.sol";
 import {IERC20LicensedStakingManager} from "./interfaces/IERC20LicensedStakingManager.sol";
 import {Initializable} from
     "@openzeppelin/contracts-upgradeable@5.0.2/proxy/utils/Initializable.sol";
