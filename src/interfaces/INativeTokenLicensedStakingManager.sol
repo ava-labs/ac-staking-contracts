@@ -36,7 +36,7 @@ interface INativeTokenLicensedStakingManager is ILicensedStakingManager {
         uint256 stakeAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
-    ) external returns (bytes32);
+    ) external payable returns (bytes32);
 
     /**
      * @notice Begins the delegator registration process. Locks the specified native tokens in the contract as the stake.
@@ -51,5 +51,5 @@ interface INativeTokenLicensedStakingManager is ILicensedStakingManager {
         uint256 stakeAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
-    ) external returns (bytes32);
+    ) external payable returns (bytes32);
 }
