@@ -35,7 +35,8 @@ export ARCH=$(uname -m)
 [ $ARCH = x86_64 ] && ARCH=amd64
 echo "ARCH set to $ARCH"
 
-DEFAULT_CONTRACT_LIST="" # TODO: Add default contract list
+DEFAULT_CONTRACT_LIST="INativeTokenLicensedStakingManager ILicensedStakingManager IERC20LicensedStakingManager ERC20LicensedStakingManager LicensedStakingManager NativeTokenLicensedStakingManager"
+
 
 CONTRACT_LIST=
 HELP=
