@@ -7,15 +7,14 @@ pragma solidity 0.8.25;
 
 import {ILicensedStakingManager} from "./ILicensedStakingManager.sol";
 import {PChainOwner} from "@validator-manager/interfaces/IACP99Manager.sol";
-import {IERC20Mintable} from "@validator-manager/interfaces/IERC20Mintable.sol";
 
 /**
- * Proof of Stake Validator Manager that stakes ERC20 tokens
+ * Proof of Stake Validator Manager that stakes native tokens
  * and requires ERC721 tokens as license for staking.
  */
-interface IERC20LicensedStakingManager is ILicensedStakingManager {
+interface INativeTokenLicensedStakingManager is ILicensedStakingManager {
     /**
-     * @notice Begins the validator registration process. Locks the specified ERC20 tokens in the contract as the stake.
+     * @notice Begins the validator registration process. Locks the specified native tokens in the contract as the stake.
      * @param nodeID The ID of the node to add to the L1.
      * @param blsPublicKey The BLS public key of the validator.
      * @param remainingBalanceOwner The remaining balance owner of the validator.
@@ -40,7 +39,7 @@ interface IERC20LicensedStakingManager is ILicensedStakingManager {
     ) external returns (bytes32);
 
     /**
-     * @notice Begins the delegator registration process. Locks the specified ERC20 tokens in the contract as the stake.
+     * @notice Begins the delegator registration process. Locks the specified native tokens in the contract as the stake.
      * @param validationID The ID of the validator to stake to.
      * @param stakeAmount The amount of tokens to stake.
      * @param licenseTokenIds The IDs of the license tokens to stake.
@@ -53,9 +52,4 @@ interface IERC20LicensedStakingManager is ILicensedStakingManager {
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
     ) external returns (bytes32);
-
-    /**
-     * @notice Returns the ERC20 token being staked
-     */
-    function erc20() external view returns (IERC20Mintable);
 }
