@@ -23,7 +23,7 @@ abstract contract LicensedStakingManager is
     ILicensedStakingManager
 {
     // solhint-disable private-vars-leading-underscore
-    /// @custom:storage-location erc7201:ac-staking.storage.LicensedStakingManager
+    /// @custom:storage-location erc7201:avacloud.storage.LicensedStakingManager
     struct LicensedStakingManagerStorage {
         // License token address
         IERC721 _token;
@@ -42,9 +42,9 @@ abstract contract LicensedStakingManager is
     }
     // solhint-enable private-vars-leading-underscore
 
-    // keccak256(abi.encode(uint256(keccak256("ac-staking.storage.LicensedStakingManager")) - 1)) & ~bytes32(uint256(0xff));
+    // keccak256(abi.encode(uint256(keccak256("avacloud.storage.LicensedStakingManager")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 public constant LICENSED_STAKING_MANAGER_STORAGE_LOCATION =
-        0x7e5bdfcce15e53c3406ea67bfce37dcd26f5152d5492824e43fd5e3c8ac5ab01; // TODO: placeholder fix it
+        0x19dadeb42f0d6e5189a2ab22a0f2b6d0770581cc39ab2fd1633a273ba24bdb00;
 
     error TokenAlreadyStaked(uint256 tokenId);
     error TokenNotStaked(uint256 tokenId);

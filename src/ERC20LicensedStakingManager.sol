@@ -29,15 +29,15 @@ contract ERC20LicensedStakingManager is
     using SafeERC20TransferFrom for IERC20Mintable;
 
     // solhint-disable private-vars-leading-underscore
-    /// @custom:storage-location erc7201:avalanche-icm.storage.ERC20LicensedStakingManager
+    /// @custom:storage-location erc7201:avacloud.storage.ERC20LicensedStakingManager
     struct ERC20LicensedStakingManagerStorage {
         IERC20Mintable _token;
     }
     // solhint-enable private-vars-leading-underscore
 
-    // keccak256(abi.encode(uint256(keccak256("avalanche-icm.storage.ERC20LicensedStakingManager")) - 1)) & ~bytes32(uint256(0xff));
+    // keccak256(abi.encode(uint256(keccak256("avacloud.storage.ERC20LicensedStakingManager")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 public constant ERC20_LICENSED_STAKING_MANAGER_STORAGE_LOCATION =
-        0x6e5bdfcce15e53c3406ea67bfce37dcd26f5152d5492824e43fd5e3c8ac5ab00;
+        0x9d37ef67e865cad1eb988c62f5e45a5866d6dd4ddd905252e31276591c701c00;
 
     // solhint-disable ordering
     function _getERC20LicensedStakingManagerStorage()
