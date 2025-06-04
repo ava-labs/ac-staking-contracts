@@ -148,7 +148,7 @@ contract ERC20LicensedStakingManager is
     }
 
     /**
-     * @notice See {StakingManager-_lock}
+     * @notice See {LicensedStakingManager-_lockTokens}
      * Note: Must be guarded with reentrancy guard for safe transfer from.
      */
     function _lockTokens(

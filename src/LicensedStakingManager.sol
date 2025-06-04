@@ -92,7 +92,7 @@ abstract contract LicensedStakingManager is
     }
 
     /**
-     * @notice See {ILicensedStakingManager-initiateValidatorRegistration}
+     * @notice See {ILicensedStakingManager-initiateLicensedValidatorRegistration}
      */
     function _initiateLicensedValidatorRegistration(
         bytes memory nodeID,
@@ -112,7 +112,7 @@ abstract contract LicensedStakingManager is
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
         // Calculate total stake value based on number of tokens
         uint256 stakeAmount =
-            tokenStakeAmount * $._licenseToStakeConversionFactor + tokenStakeAmount;
+            licenseTokenIds.length * $._licenseToStakeConversionFactor + tokenStakeAmount;
 
         bytes32 validationID = _initiateValidatorRegistration({
             nodeID: nodeID,
