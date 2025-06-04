@@ -1,0 +1,2 @@
+ERC20_LICENSED_STAKING_MANAGER_STORAGE="avacloud.storage.ERC20LicensedStakingManager"
+LICENSED_STAKING_MANAGER_STORAGE="avacloud.storage.LicensedStakingManager"
