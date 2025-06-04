@@ -7,6 +7,7 @@
 @openzeppelin/contracts@5.0.2/=lib/icm-contracts/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/
 @teleporter/=lib/icm-contracts/contracts/teleporter/
 @utilities/=lib/icm-contracts/contracts/utilities/
+@validator-manager/=lib/icm-contracts/contracts/validator-manager/
 ds-test/=lib/icm-contracts/lib/openzeppelin-contracts-upgradeable/lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/icm-contracts/lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
