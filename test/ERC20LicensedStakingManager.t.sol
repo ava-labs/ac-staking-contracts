@@ -347,7 +347,9 @@ contract ERC20LicensedStakingManagerTest is Test {
         uint256 validatorFee = delegationRewards * MINIMUM_DELEGATION_FEE_BIPS / 10000; // 10000 == BIPS_CONVERSION_FACTOR
         uint256 expectedRewards = delegationRewards - validatorFee;
         vm.expectEmit(true, true, true, true);
-        emit IERC20LicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        emit IERC20LicensedStakingManager.ERC20TokensUnlocked(
+            DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT
+        );
         stakingManager.completeDelegatorRemoval(delegationID, 0);
         assertEq(
             erc20Token.balanceOf(DEFAULT_DELEGATOR_USER),

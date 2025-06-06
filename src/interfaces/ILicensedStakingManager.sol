@@ -10,7 +10,6 @@ import {IStakingManager} from "@validator-manager/interfaces/IStakingManager.sol
 
 /**
  * @dev Interface for the LicensedStakingManager contract.
- * This contract requires ERC721 tokens as license for staking.
  */
 interface ILicensedStakingManager is IStakingManager {
     /**
