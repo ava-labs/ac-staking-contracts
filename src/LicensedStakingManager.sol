@@ -15,7 +15,9 @@ import {StakingManagerSettings} from "@validator-manager/interfaces/IStakingMana
 
 /**
  * @dev Implementation of the {ILicensedStakingManager} interface.
- * This contract allows ERC721 tokens to server as license for staking.
+ * This contract adds additional requirement for staking and delegation
+ * in shape of ERC721 tokens.
+ * ERC721 tokens are licenses that enable users to stake and delegate.
  */
 abstract contract LicensedStakingManager is
     Initializable,
@@ -28,6 +30,7 @@ abstract contract LicensedStakingManager is
         // License token address
         IERC721 _token;
         // Conversion factor for license tokens to stake amount
+        // See `_totalStakeAmount` function on how the total stake amount is calculated
         uint256 _licenseToStakeConversionFactor;
         // Maps validationID to array of staked token IDs for validators
         mapping(bytes32 => uint256[]) _validatorStakedTokens;
@@ -96,10 +99,18 @@ abstract contract LicensedStakingManager is
     function _validateTokenStakeAmount(
         uint256 tokenStakeAmount
     ) internal view {
-        StakingManagerStorage storage stmStorage = _getStakingManagerStorage();
-        if (tokenStakeAmount < stmStorage._weightToValueFactor) {
+        StakingManagerStorage storage $ = _getStakingManagerStorage();
+        if (tokenStakeAmount < $._weightToValueFactor) {
             revert InvalidTokenStakeAmount(tokenStakeAmount);
         }
+    }
+
+    function _totalStakeAmount(
+        uint256 tokenStakeAmount,
+        uint256[] calldata licenseTokenIds
+    ) internal view returns (uint256) {
+        LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
+        return tokenStakeAmount + licenseTokenIds.length * $._licenseToStakeConversionFactor;
     }
 
     /**
@@ -120,11 +131,8 @@ abstract contract LicensedStakingManager is
             revert InvalidTokenCount(licenseTokenIds.length);
         }
         _validateTokenStakeAmount(tokenStakeAmount);
-
-        LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
         // Calculate total stake value based on number of tokens
-        uint256 stakeAmount =
-            licenseTokenIds.length * $._licenseToStakeConversionFactor + tokenStakeAmount;
+        uint256 stakeAmount = _totalStakeAmount(tokenStakeAmount, licenseTokenIds);
 
         bytes32 validationID = _initiateValidatorRegistration({
             nodeID: nodeID,
@@ -159,15 +167,11 @@ abstract contract LicensedStakingManager is
             revert InvalidTokenCount(licenseTokenIds.length);
         }
         _validateTokenStakeAmount(delegationAmount);
-
-        LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
-
         // Calculate total delegation value based on number of tokens
-        uint256 fullDelegationAmount =
-            licenseTokenIds.length * $._licenseToStakeConversionFactor + delegationAmount;
+        uint256 totalDelegationAmount = _totalStakeAmount(delegationAmount, licenseTokenIds);
 
         bytes32 delegationID = _initiateDelegatorRegistration(
-            validationID, _msgSender(), fullDelegationAmount, rewardRecipient
+            validationID, _msgSender(), totalDelegationAmount, rewardRecipient
         );
 
         // Lock ERC721 tokens
