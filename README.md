@@ -1,66 +1,50 @@
-## Foundry
+# AC Staking Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A collection of smart contracts for managing staking operations in the AvaCloud ecosystem, supporting both ERC20 and native token staking with license-based validation.
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+This repository contains smart contracts that implement a licensed staking system for validators and delegators. The system requires both staking tokens (either ERC20 or native tokens) and license tokens (ERC721) to participate in the network's proof-of-stake mechanism.
 
-## Documentation
+## Key Features
 
-https://book.getfoundry.sh/
+- **Dual Token System**: Combines staking tokens (ERC20/native) with license tokens (ERC721)
+- **Validator Management**: Register and manage validators with configurable parameters
+- **Delegation System**: Allow token holders to delegate to validators
+- **Reward Distribution**: Automated reward calculation and distribution
+- **Configurable Parameters**: Flexible settings for stake amounts, durations, and fees
 
-## Usage
+## Contract Architecture
 
-### Build
+### Main Contracts
 
-```shell
-$ forge build
-```
+1. **LicensedStakingManager**: Base contract implementing the core staking logic with license requirements
+2. **ERC20LicensedStakingManager**: Implementation for ERC20 token staking
+3. **NativeTokenLicensedStakingManager**: Implementation for native token staking
 
-### Test
+### Key Components
 
-```shell
-$ forge test
-```
+- **Validator Registration**: Process for registering validators with required stake and licenses
+- **Delegator Registration**: Process for delegators to stake with validators
+- **Reward System**: Calculation and distribution of staking rewards
+- **Token Management**: Handling of both staking tokens and license tokens
 
-### Format
+### Modifications of existing contracts
 
-```shell
-$ forge fmt
-```
+Check [description](src/README.md) for scope of changes to original implementation of `StakingManager.sol`
 
-### Gas Snapshots
+## Configuration Parameters
 
-```shell
-$ forge snapshot
-```
+- `LICENSE_TO_STAKE_CONVERSION_FACTOR`: Conversion factor for license tokens to stake amount
 
-### Anvil
+## Development
 
-```shell
-$ anvil
-```
+Utilize `Makefile` to build, test, lint...
 
-### Deploy
+## License
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+This code is licensed under a custom license. See the `LICENSE` file for details.
 
-### Cast
+## Contact
 
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+For questions and support, please contact the AvaCloud team.
