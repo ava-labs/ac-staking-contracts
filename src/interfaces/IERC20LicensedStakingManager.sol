@@ -14,6 +14,8 @@ import {IERC20Mintable} from "@validator-manager/interfaces/IERC20Mintable.sol";
  * and requires ERC721 tokens as license for staking.
  */
 interface IERC20LicensedStakingManager is ILicensedStakingManager {
+    event Unlocked(address indexed to, uint256 amount);
+
     /**
      * @notice Begins the validator registration process. Locks the specified ERC20 tokens in the contract as the stake.
      * @param nodeID The ID of the node to add to the L1.

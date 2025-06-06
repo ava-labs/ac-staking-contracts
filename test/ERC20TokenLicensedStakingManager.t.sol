@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {NativeTokenLicensedStakingManager} from "../src/NativeTokenLicensedStakingManager.sol";
+import {ERC20LicensedStakingManager} from "../src/ERC20LicensedStakingManager.sol";
+
+import {IERC20LicensedStakingManager} from "../src/interfaces/IERC20LicensedStakingManager.sol";
 import {ILicensedStakingManager} from "../src/interfaces/ILicensedStakingManager.sol";
-import {INativeTokenLicensedStakingManager} from
-    "../src/interfaces/INativeTokenLicensedStakingManager.sol";
 import {
     MockERC721,
-    MockNativeMinter,
     MockRewardCalculator,
     MockValidatorManager,
     WEIGHT_TO_VALUE_FACTOR
 } from "./Common.sol";
 import "./Common.sol";
-import {INativeMinter} from
-    "@avalabs/subnet-evm-contracts@1.2.2/contracts/interfaces/INativeMinter.sol";
+import {ExampleERC20} from "@mocks/ExampleERC20.sol";
 import {ERC721} from "@openzeppelin/contracts@5.0.2/token/ERC721/ERC721.sol";
 import {ICMInitializable} from "@utilities/ICMInitializable.sol";
 import {Validator, ValidatorStatus} from "@validator-manager/interfaces/IACP99Manager.sol";
@@ -27,10 +25,10 @@ import {IValidatorManager} from "@validator-manager/interfaces/IValidatorManager
 import {PChainOwner} from "@validator-manager/interfaces/IValidatorManager.sol";
 import {Test} from "forge-std/Test.sol";
 
-contract NativeTokenLicensedStakingManagerTest is Test {
-    NativeTokenLicensedStakingManager public stakingManager;
+contract ERC20LicensedStakingManagerTest is Test {
+    ERC20LicensedStakingManager public stakingManager;
     MockERC721 public licenseToken;
-    MockNativeMinter public nativeMinter;
+    ExampleERC20 public erc20Token;
     MockValidatorManager public validatorManager;
     MockRewardCalculator public rewardCalculator;
 
@@ -53,13 +51,12 @@ contract NativeTokenLicensedStakingManagerTest is Test {
     function setUp() public {
         // Deploy mock contracts
         licenseToken = new MockERC721();
-        nativeMinter = new MockNativeMinter();
-        vm.etch(0x0200000000000000000000000000000000000001, address(nativeMinter).code);
+        erc20Token = new ExampleERC20();
         validatorManager = new MockValidatorManager();
         rewardCalculator = new MockRewardCalculator();
 
         // Deploy staking manager
-        stakingManager = new NativeTokenLicensedStakingManager(ICMInitializable.Allowed);
+        stakingManager = new ERC20LicensedStakingManager(ICMInitializable.Allowed);
 
         // Initialize staking manager
         StakingManagerSettings memory settings = StakingManagerSettings({
@@ -74,7 +71,9 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             uptimeBlockchainID: bytes32(uint256(1))
         });
 
-        stakingManager.initialize(settings, licenseToken, LICENSE_TO_STAKE_CONVERSION_FACTOR);
+        stakingManager.initialize(
+            settings, erc20Token, licenseToken, LICENSE_TO_STAKE_CONVERSION_FACTOR
+        );
         DEFAULT_PCHAIN_OWNER.addresses[0] = DEFAULT_VALIDATOR_USER;
 
         // Mint and approve
@@ -91,10 +90,24 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         licenseToken.approve(address(stakingManager), 2);
         DEFAULT_DELEGATOR_LICENSE_TOKENS[0] = 2;
         vm.stopPrank();
+
+        // Mint ERC20 tokens to users
+        erc20Token.mint(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        erc20Token.mint(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+
+        // Approve ERC20 tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        erc20Token.approve(address(stakingManager), MINIMUM_STAKE_AMOUNT);
+        vm.stopPrank();
+
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        erc20Token.approve(address(stakingManager), DELEGATION_AMOUNT);
+        vm.stopPrank();
     }
 
     function test_Initialize() public view {
         assertEq(address(stakingManager.erc721()), address(licenseToken));
+        assertEq(address(stakingManager.erc20()), address(erc20Token));
         assertEq(
             stakingManager.licenseToStakeConversionFactor(), LICENSE_TO_STAKE_CONVERSION_FACTOR
         );
@@ -102,8 +115,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
 
     function test_InitiateValidatorRegistration() public {
         vm.startPrank(DEFAULT_VALIDATOR_USER);
-        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
-        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_VALIDATOR_USER);
         vm.expectEmit(true, true, true, true);
         emit IStakingManager.InitiatedStakingValidatorRegistration(
             DEFAULT_VALIDATION_ID,
@@ -116,9 +128,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         emit ILicensedStakingManager.ValidatorRegisteredWithLicenses(
             DEFAULT_VALIDATION_ID, DEFAULT_VALIDATOR_LICENSE_TOKENS
         );
-        bytes32 validationID = stakingManager.initiateValidatorRegistration{
-            value: MINIMUM_STAKE_AMOUNT
-        }(
+        bytes32 validationID = stakingManager.initiateValidatorRegistration(
             DEFAULT_NODE_ID,
             DEFAULT_BLS_PUBLIC_KEY,
             DEFAULT_PCHAIN_OWNER,
@@ -131,7 +141,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         );
         vm.stopPrank();
 
-        uint256 balanceAfter = DEFAULT_VALIDATOR_USER.balance;
+        uint256 balanceAfter = erc20Token.balanceOf(DEFAULT_VALIDATOR_USER);
         // Verify balance subtracted
         assertEq(balanceAfter, balanceBefore - MINIMUM_STAKE_AMOUNT);
         // Verify validation ID is set
@@ -149,8 +159,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
     function test_InitiateDelegatorRegistration() public {
         // First set up validator stake
         vm.startPrank(DEFAULT_VALIDATOR_USER);
-        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
-        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+        stakingManager.initiateValidatorRegistration(
             DEFAULT_NODE_ID,
             DEFAULT_BLS_PUBLIC_KEY,
             DEFAULT_PCHAIN_OWNER,
@@ -169,7 +178,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
 
         // Then proceed with delegator registration
         vm.startPrank(DEFAULT_DELEGATOR_USER);
-        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_DELEGATOR_USER);
         bytes32 defaultDelegationID = keccak256(abi.encodePacked(DEFAULT_VALIDATION_ID, uint64(0)));
         vm.expectEmit(true, true, true, true);
         emit IStakingManager.InitiatedDelegatorRegistration(
@@ -186,9 +195,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         emit ILicensedStakingManager.DelegatorRegisteredWithLicenses(
             defaultDelegationID, DEFAULT_VALIDATION_ID, DEFAULT_DELEGATOR_LICENSE_TOKENS
         );
-        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
-            value: DELEGATION_AMOUNT
-        }(
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration(
             DEFAULT_VALIDATION_ID,
             DELEGATION_AMOUNT,
             DEFAULT_DELEGATOR_LICENSE_TOKENS,
@@ -196,6 +203,9 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         );
         vm.stopPrank();
 
+        uint256 balanceAfter = erc20Token.balanceOf(DEFAULT_DELEGATOR_USER);
+        // Verify balance subtracted
+        assertEq(balanceAfter, balanceBefore - DELEGATION_AMOUNT);
         // Verify
         assertTrue(delegationID == defaultDelegationID);
         assertEq(licenseToken.ownerOf(2), address(stakingManager));
@@ -211,8 +221,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
     function test_ValidatorRemoval() public {
         // First set up validator so staking manager owns tokens
         vm.startPrank(DEFAULT_VALIDATOR_USER);
-        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
-        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+        stakingManager.initiateValidatorRegistration(
             DEFAULT_NODE_ID,
             DEFAULT_BLS_PUBLIC_KEY,
             DEFAULT_PCHAIN_OWNER,
@@ -225,19 +234,18 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         );
         vm.stopPrank();
 
-        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_VALIDATOR_USER);
         stakingManager.completeValidatorRemoval(0);
         // Verify license token is returned to the user
         assertEq(licenseToken.ownerOf(1), DEFAULT_VALIDATOR_USER);
         // Verify tokens have been unlocked
-        assertEq(DEFAULT_VALIDATOR_USER.balance, balanceBefore + MINIMUM_STAKE_AMOUNT);
+        assertEq(erc20Token.balanceOf(DEFAULT_VALIDATOR_USER), balanceBefore + MINIMUM_STAKE_AMOUNT);
     }
 
     function test_ValidatorReward() public {
         // First set up validator so staking manager owns tokens
         vm.startPrank(DEFAULT_VALIDATOR_USER);
-        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
-        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+        stakingManager.initiateValidatorRegistration(
             DEFAULT_NODE_ID,
             DEFAULT_BLS_PUBLIC_KEY,
             DEFAULT_PCHAIN_OWNER,
@@ -280,7 +288,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             abi.encodeWithSelector(IACP99Manager.getValidator.selector),
             abi.encode(validator)
         );
-        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_VALIDATOR_USER);
         vm.expectEmit(true, true, true, true);
         emit IStakingManager.ValidatorRewardClaimed(
             DEFAULT_VALIDATION_ID, DEFAULT_VALIDATOR_USER, 2e17
@@ -289,14 +297,16 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         // Verify license token is returned to the user
         assertEq(licenseToken.ownerOf(1), DEFAULT_VALIDATOR_USER);
         // Verify tokens have been unlocked
-        assertEq(DEFAULT_VALIDATOR_USER.balance, balanceBefore + MINIMUM_STAKE_AMOUNT + 2e17);
+        assertEq(
+            erc20Token.balanceOf(DEFAULT_VALIDATOR_USER),
+            balanceBefore + MINIMUM_STAKE_AMOUNT + 2e17
+        );
     }
 
     function test_CompleteDelegatorRemoval() public {
         // First set up validator so staking manager owns tokens
         vm.startPrank(DEFAULT_VALIDATOR_USER);
-        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
-        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+        stakingManager.initiateValidatorRegistration(
             DEFAULT_NODE_ID,
             DEFAULT_BLS_PUBLIC_KEY,
             DEFAULT_PCHAIN_OWNER,
@@ -310,10 +320,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         vm.stopPrank();
         // Then proceed with delegator registration
         vm.startPrank(DEFAULT_DELEGATOR_USER);
-        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
-        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
-            value: DELEGATION_AMOUNT
-        }(
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration(
             DEFAULT_VALIDATION_ID,
             DELEGATION_AMOUNT,
             DEFAULT_DELEGATOR_LICENSE_TOKENS,
@@ -329,15 +336,14 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         vm.startPrank(DEFAULT_DELEGATOR_USER);
         stakingManager.initiateDelegatorRemoval(delegationID, false, 0);
 
-        uint256 balanceBefore = DEFAULT_DELEGATOR_USER.balance;
+        uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_DELEGATOR_USER);
         uint256 expectedRewards = 99000990000000000;
         vm.expectEmit(true, true, true, true);
-        emit MockNativeCoinMinted(DEFAULT_DELEGATOR_USER, expectedRewards);
-        vm.expectEmit(true, true, true, true);
-        emit INativeTokenLicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        emit IERC20LicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
         stakingManager.completeDelegatorRemoval(delegationID, 0);
         assertEq(
-            DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
+            erc20Token.balanceOf(DEFAULT_DELEGATOR_USER),
+            balanceBefore + DELEGATION_AMOUNT + expectedRewards
         );
         assertEq(licenseToken.ownerOf(2), DEFAULT_DELEGATOR_USER);
         vm.stopPrank();

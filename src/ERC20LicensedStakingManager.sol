@@ -166,6 +166,7 @@ contract ERC20LicensedStakingManager is
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
         LicensedStakingManager._unlock(to, value, stakeId);
         _getERC20LicensedStakingManagerStorage()._token.safeTransfer(to, tokenAmount);
+        emit Unlocked(to, tokenAmount);
     }
 
     /**
