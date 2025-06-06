@@ -267,7 +267,9 @@ contract ERC20LicensedStakingManagerTest is Test {
         (address rewardRecipient, uint256 claimableRewards) =
             stakingManager.getValidatorRewardInfo(DEFAULT_VALIDATION_ID);
         assertEq(rewardRecipient, DEFAULT_VALIDATOR_USER);
-        assertEq(claimableRewards, 2e17);
+        assertEq(
+            claimableRewards, (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) * 10 / 100
+        );
 
         Validator memory validator = Validator({
             status: ValidatorStatus.Completed,
@@ -291,7 +293,9 @@ contract ERC20LicensedStakingManagerTest is Test {
         uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_VALIDATOR_USER);
         vm.expectEmit(true, true, true, true);
         emit IStakingManager.ValidatorRewardClaimed(
-            DEFAULT_VALIDATION_ID, DEFAULT_VALIDATOR_USER, 2e17
+            DEFAULT_VALIDATION_ID,
+            DEFAULT_VALIDATOR_USER,
+            (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) * 10 / 100
         );
         stakingManager.completeValidatorRemoval(0);
         // Verify license token is returned to the user
@@ -299,7 +303,8 @@ contract ERC20LicensedStakingManagerTest is Test {
         // Verify tokens have been unlocked
         assertEq(
             erc20Token.balanceOf(DEFAULT_VALIDATOR_USER),
-            balanceBefore + MINIMUM_STAKE_AMOUNT + 2e17
+            balanceBefore + MINIMUM_STAKE_AMOUNT
+                + (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) * 10 / 100
         );
     }
 
@@ -337,7 +342,10 @@ contract ERC20LicensedStakingManagerTest is Test {
         stakingManager.initiateDelegatorRemoval(delegationID, false, 0);
 
         uint256 balanceBefore = erc20Token.balanceOf(DEFAULT_DELEGATOR_USER);
-        uint256 expectedRewards = 99000990000000000;
+        uint256 delegationRewards =
+            (DELEGATION_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) * 10 / 100;
+        uint256 validatorFee = delegationRewards * MINIMUM_DELEGATION_FEE_BIPS / 10000; // 10000 == BIPS_CONVERSION_FACTOR
+        uint256 expectedRewards = delegationRewards - validatorFee;
         vm.expectEmit(true, true, true, true);
         emit IERC20LicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
         stakingManager.completeDelegatorRemoval(delegationID, 0);
