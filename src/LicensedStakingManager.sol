@@ -49,11 +49,9 @@ abstract contract LicensedStakingManager is
     bytes32 public constant LICENSED_STAKING_MANAGER_STORAGE_LOCATION =
         0x19dadeb42f0d6e5189a2ab22a0f2b6d0770581cc39ab2fd1633a273ba24bdb00;
 
-    error TokenAlreadyStaked(uint256 tokenId);
-    error TokenNotStaked(uint256 tokenId);
-    error InvalidTokenCount(uint256 count);
+    error LicenseTokenAlreadyStaked(uint256 licenseTokenId);
+    error InvalidLicenseTokenCount(uint256 count);
     error InvalidTokenStakeAmount(uint256 amount);
-    error InvalidDelegationAmount(uint256 amount);
 
     // solhint-disable ordering
     function _getLicensedStakingManagerStorage()
@@ -70,32 +68,44 @@ abstract contract LicensedStakingManager is
     /**
      * @notice Initialize the ERC721 token staking manager
      * @param settings Initial settings for the PoS validator manager
-     * @param token The ERC721 token to be staked
+     * @param licenseToken The ERC721 token used as a staking license
      * @param licenseToStakeConversionFactor_ The conversion factor for license tokens to stake amount
      */
     // solhint-disable-next-line func-name-mixedcase
     function __LicensedStakingManager_init(
         StakingManagerSettings calldata settings,
-        IERC721 token,
+        IERC721 licenseToken,
         uint256 licenseToStakeConversionFactor_
     ) internal onlyInitializing {
         __StakingManager_init(settings);
-        __LicensedStakingManager_init_unchained(token, licenseToStakeConversionFactor_);
+        __LicensedStakingManager_init_unchained(licenseToken, licenseToStakeConversionFactor_);
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function __LicensedStakingManager_init_unchained(
-        IERC721 token,
+        IERC721 licenseToken,
         uint256 licenseToStakeConversionFactor_
     ) internal onlyInitializing {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
-        if (address(token) == address(0)) {
+        if (address(licenseToken) == address(0)) {
             revert ZeroAddress();
         }
-        $._token = token;
+        $._token = licenseToken;
         $._licenseToStakeConversionFactor = licenseToStakeConversionFactor_;
     }
 
+    /**
+     * @notice Validates the amount of tokens intended to be staked
+     * @dev This check is performed in `_initiateLicensedValidatorRegistration` and `_initiateLicensedDelegatorRegistration`
+     * It is required because otherwise it would be possible for tokens to stay forever locked in the contract
+     * during `weightToValue` and `valueToWeight` conversions.
+     * Example:
+     * - delegation token amount is 100, but weightToValueFactor is 1000.
+     * - _licenseToStakeConversionFactor is 1000 and 1 license token is staked
+     * - total stake amount is 100 + 1 * 1000 = 1100 will be converted to weight 1
+     * - when unlocking weight 1 will be coverted to 1000, so when license stake amount is deducted, 0 tokens will be returned to user.
+     * @param tokenStakeAmount The amount of tokens to stake
+     */
     function _validateTokenStakeAmount(
         uint256 tokenStakeAmount
     ) internal view {
@@ -105,6 +115,12 @@ abstract contract LicensedStakingManager is
         }
     }
 
+    /**
+     * @notice Calculates the total stake amount
+     * @param tokenStakeAmount The amount of tokens to stake
+     * @param licenseTokenIds The amount of license tokens to stake
+     * @return The total stake amount
+     */
     function _totalStakeAmount(
         uint256 tokenStakeAmount,
         uint256[] calldata licenseTokenIds
@@ -128,7 +144,7 @@ abstract contract LicensedStakingManager is
         address rewardRecipient
     ) internal returns (bytes32) {
         if (licenseTokenIds.length == 0) {
-            revert InvalidTokenCount(licenseTokenIds.length);
+            revert InvalidLicenseTokenCount(licenseTokenIds.length);
         }
         _validateTokenStakeAmount(tokenStakeAmount);
         // Calculate total stake value based on number of tokens
@@ -147,6 +163,7 @@ abstract contract LicensedStakingManager is
 
         // Lock ERC721 tokens
         _lockERC721s(validationID, licenseTokenIds, true, bytes32(0));
+        // Lock stake tokens
         _lockTokens(tokenStakeAmount);
 
         emit ValidatorRegisteredWithLicenses(validationID, licenseTokenIds);
@@ -164,7 +181,7 @@ abstract contract LicensedStakingManager is
         address rewardRecipient
     ) internal returns (bytes32) {
         if (licenseTokenIds.length == 0) {
-            revert InvalidTokenCount(licenseTokenIds.length);
+            revert InvalidLicenseTokenCount(licenseTokenIds.length);
         }
         _validateTokenStakeAmount(delegationAmount);
         // Calculate total delegation value based on number of tokens
@@ -176,6 +193,7 @@ abstract contract LicensedStakingManager is
 
         // Lock ERC721 tokens
         _lockERC721s(delegationID, licenseTokenIds, false, validationID);
+        // Lock stake tokens
         _lockTokens(delegationAmount);
 
         emit DelegatorRegisteredWithLicenses(delegationID, validationID, licenseTokenIds);
@@ -206,7 +224,7 @@ abstract contract LicensedStakingManager is
                 $._tokenToValidator[tokenId] != bytes32(0)
                     || $._tokenToDelegation[tokenId] != bytes32(0)
             ) {
-                revert TokenAlreadyStaked(tokenId);
+                revert LicenseTokenAlreadyStaked(tokenId);
             }
 
             // Transfer token from user to contract
@@ -238,7 +256,12 @@ abstract contract LicensedStakingManager is
     }
 
     /**
-     * TODO: Add documentation
+     * @notice Locks state tokens in the contract
+     * @dev Since the `_lock` function from staking manager contract only accepts full stake amount,
+     * we wouldn't be able to determine the amount of stake tokens to lock. Therefore `_lockTokens`
+     * is used to lock stake tokens and called from `_initiateLicensedValidatorRegistration` and
+     * `_initiateLicensedDelegatorRegistration` functions where the exact amounts are known.
+     * @param value The amount of tokens to lock
      */
     function _lockTokens(
         uint256 value
@@ -246,7 +269,8 @@ abstract contract LicensedStakingManager is
 
     /**
      * @notice See {StakingManager-_unlock}
-     * @dev This function is not used for ERC721 tokens
+     * @dev Used to unlock license tokens.
+     * IMPORTANT: Value parameter is not used and stake tokens should be unlocked in the implementation of the contract.
      */
     function _unlock(address to, uint256, bytes32 stakeId) internal virtual override {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
@@ -258,7 +282,11 @@ abstract contract LicensedStakingManager is
     }
 
     /**
-     * TODO: Add documentation
+     * @notice Calculates the amount of stake tokens from the total stake amount
+     * @dev This function is inverted to `_totalStakeAmount` function.
+     * @param stakeId The validation ID or delegation ID
+     * @param stakeAmount The total stake amount
+     * @return The amount of stake tokens
      */
     function _tokenAmountFromStakeAmount(
         bytes32 stakeId,
@@ -307,7 +335,6 @@ abstract contract LicensedStakingManager is
             delete $._tokenToDelegation[tokenId];
         }
         delete $._delegatorStakedTokens[delegationID];
-        // TODO: Think about this
         // Remove delegationID from validatorDelegations
         for (uint256 i = 0; i < $._validatorDelegations[delegationID].length; i++) {
             if ($._validatorDelegations[delegationID][i] == delegationID) {
