@@ -127,6 +127,7 @@ contract NativeTokenLicensedStakingManager is
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
         LicensedStakingManager._unlock(to, value, stakeId);
         payable(to).sendValue(tokenAmount);
+        emit Unlocked(to, tokenAmount);
     }
 
     /**

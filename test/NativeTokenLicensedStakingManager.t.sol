@@ -1,0 +1,484 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.25;
+
+import {NativeTokenLicensedStakingManager} from "../src/NativeTokenLicensedStakingManager.sol";
+import {ILicensedStakingManager} from "../src/interfaces/ILicensedStakingManager.sol";
+import {INativeTokenLicensedStakingManager} from
+    "../src/interfaces/INativeTokenLicensedStakingManager.sol";
+import {INativeMinter} from
+    "@avalabs/subnet-evm-contracts@1.2.2/contracts/interfaces/INativeMinter.sol";
+import {ERC721} from "@openzeppelin/contracts@5.0.2/token/ERC721/ERC721.sol";
+import {ICMInitializable} from "@utilities/ICMInitializable.sol";
+import {Validator, ValidatorStatus} from "@validator-manager/interfaces/IACP99Manager.sol";
+import {ConversionData} from "@validator-manager/interfaces/IACP99Manager.sol";
+import {IACP99Manager} from "@validator-manager/interfaces/IACP99Manager.sol";
+import {IRewardCalculator} from "@validator-manager/interfaces/IRewardCalculator.sol";
+import {IStakingManager} from "@validator-manager/interfaces/IStakingManager.sol";
+import {StakingManagerSettings} from "@validator-manager/interfaces/IStakingManager.sol";
+import {IValidatorManager} from "@validator-manager/interfaces/IValidatorManager.sol";
+import {PChainOwner} from "@validator-manager/interfaces/IValidatorManager.sol";
+import {Test} from "forge-std/Test.sol";
+
+// Mock contracts
+contract MockERC721 is ERC721 {
+    constructor() ERC721("Mock License Token", "MLT") {}
+
+    function mint(address to, uint256 tokenId) external {
+        _safeMint(to, tokenId);
+    }
+}
+
+event MockNativeCoinMinted(address indexed to, uint256 amount);
+
+bytes32 constant DEFAULT_VALIDATION_ID = bytes32(uint256(100));
+
+contract MockNativeMinter is INativeMinter, Test {
+    function mintNativeCoin(address to, uint256 amount) external override {
+        deal(to, amount);
+        emit MockNativeCoinMinted(to, amount);
+    }
+
+    function readAllowList(
+        address
+    ) external pure returns (uint256) {
+        return 0;
+    }
+
+    function setAdmin(
+        address addr
+    ) external {}
+
+    function setEnabled(
+        address addr
+    ) external {}
+
+    function setManager(
+        address addr
+    ) external {}
+
+    function setNone(
+        address addr
+    ) external {}
+}
+
+uint64 constant DEFAULT_BLOCK_TIMESTAMP = 1717660800;
+uint256 constant MINIMUM_STAKE_AMOUNT = 1 ether;
+bytes constant DEFAULT_NODE_ID = bytes("NodeID-");
+uint256 constant WEIGHT_TO_VALUE_FACTOR = 1e12;
+uint256 constant LICENSE_TO_STAKE_CONVERSION_FACTOR = 1 ether;
+
+contract MockValidatorManager is IValidatorManager {
+    function getValidator(
+        bytes32
+    ) external pure override returns (Validator memory) {
+        uint256 weight =
+            (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) / WEIGHT_TO_VALUE_FACTOR;
+        return Validator({
+            status: ValidatorStatus.Active,
+            nodeID: DEFAULT_NODE_ID,
+            startingWeight: uint64(weight),
+            sentNonce: 1,
+            receivedNonce: 1,
+            weight: uint64(weight),
+            startTime: uint64(DEFAULT_BLOCK_TIMESTAMP),
+            endTime: uint64(DEFAULT_BLOCK_TIMESTAMP + 365 days)
+        });
+    }
+
+    function getChurnPeriodSeconds() external pure override returns (uint64) {
+        return 60 seconds;
+    }
+
+    // Required interface functions with minimal implementations for testing
+    function initializeValidatorSet(ConversionData calldata, uint32) external pure override {}
+
+    function completeValidatorRegistration(
+        uint32
+    ) external pure override returns (bytes32) {
+        return bytes32(0);
+    }
+
+    function completeValidatorRemoval(
+        uint32
+    ) external pure override returns (bytes32) {
+        return DEFAULT_VALIDATION_ID;
+    }
+
+    function completeValidatorWeightUpdate(
+        uint32
+    ) external pure override returns (bytes32, uint64) {
+        return (bytes32(0), 0);
+    }
+
+    function subnetID() external pure override returns (bytes32) {
+        return bytes32(0);
+    }
+
+    function l1TotalWeight() external pure override returns (uint64) {
+        return 0;
+    }
+
+    function migrateFromV1(bytes32, uint32) external pure override {}
+
+    function initiateValidatorRegistration(
+        bytes memory,
+        bytes memory,
+        PChainOwner memory,
+        PChainOwner memory,
+        uint64
+    ) external pure override returns (bytes32) {
+        return DEFAULT_VALIDATION_ID;
+    }
+
+    function resendRegisterValidatorMessage(
+        bytes32
+    ) external pure override {}
+    function initiateValidatorRemoval(
+        bytes32
+    ) external pure override {}
+    function resendValidatorRemovalMessage(
+        bytes32
+    ) external pure override {}
+
+    function initiateValidatorWeightUpdate(
+        bytes32,
+        uint64
+    ) external pure override returns (uint64, bytes32) {
+        return (0, bytes32(0));
+    }
+
+    function registeredValidators(
+        bytes calldata
+    ) external pure override returns (bytes32) {
+        return bytes32(0);
+    }
+}
+
+contract MockRewardCalculator {
+    function calculateReward(
+        uint256 stakeAmount,
+        uint64,
+        uint64,
+        uint64,
+        uint64
+    ) external pure returns (uint256) {
+        return stakeAmount * 10 / 100; // 10% reward
+    }
+}
+
+contract NativeTokenLicensedStakingManagerTest is Test {
+    NativeTokenLicensedStakingManager public stakingManager;
+    MockERC721 public licenseToken;
+    MockNativeMinter public nativeMinter;
+    MockValidatorManager public validatorManager;
+    MockRewardCalculator public rewardCalculator;
+
+    uint256 public constant MAXIMUM_STAKE_AMOUNT = 100 ether;
+    uint64 public constant MINIMUM_STAKE_DURATION = 1 days;
+    uint16 public constant MINIMUM_DELEGATION_FEE_BIPS = 100;
+    uint256 public constant DELEGATION_AMOUNT = 1e13;
+    uint8 public constant MAXIMUM_STAKE_MULTIPLIER = 4;
+
+    address constant DEFAULT_VALIDATOR_USER = address(0x1);
+    address constant DEFAULT_DELEGATOR_USER = address(0x2);
+
+    uint256[] DEFAULT_VALIDATOR_LICENSE_TOKENS = new uint256[](1);
+    uint256[] DEFAULT_DELEGATOR_LICENSE_TOKENS = new uint256[](1);
+
+    PChainOwner DEFAULT_PCHAIN_OWNER = PChainOwner({threshold: 1, addresses: new address[](1)});
+
+    bytes DEFAULT_BLS_PUBLIC_KEY = bytes("BLS-");
+
+    function setUp() public {
+        // Deploy mock contracts
+        licenseToken = new MockERC721();
+        nativeMinter = new MockNativeMinter();
+        vm.etch(0x0200000000000000000000000000000000000001, address(nativeMinter).code);
+        validatorManager = new MockValidatorManager();
+        rewardCalculator = new MockRewardCalculator();
+
+        // Deploy staking manager
+        stakingManager = new NativeTokenLicensedStakingManager(ICMInitializable.Allowed);
+
+        // Initialize staking manager
+        StakingManagerSettings memory settings = StakingManagerSettings({
+            manager: IValidatorManager(address(validatorManager)),
+            minimumStakeAmount: MINIMUM_STAKE_AMOUNT,
+            maximumStakeAmount: MAXIMUM_STAKE_AMOUNT,
+            minimumStakeDuration: MINIMUM_STAKE_DURATION,
+            minimumDelegationFeeBips: MINIMUM_DELEGATION_FEE_BIPS,
+            maximumStakeMultiplier: MAXIMUM_STAKE_MULTIPLIER,
+            weightToValueFactor: WEIGHT_TO_VALUE_FACTOR,
+            rewardCalculator: IRewardCalculator(address(rewardCalculator)),
+            uptimeBlockchainID: bytes32(uint256(1))
+        });
+
+        stakingManager.initialize(settings, licenseToken, LICENSE_TO_STAKE_CONVERSION_FACTOR);
+        DEFAULT_PCHAIN_OWNER.addresses[0] = DEFAULT_VALIDATOR_USER;
+
+        // Mint and approve
+        // Mint license token to validator user
+        licenseToken.mint(DEFAULT_VALIDATOR_USER, 1);
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        licenseToken.approve(address(stakingManager), 1);
+        DEFAULT_VALIDATOR_LICENSE_TOKENS[0] = 1;
+        vm.stopPrank();
+
+        // Mint license token to delegator user
+        licenseToken.mint(DEFAULT_DELEGATOR_USER, 2);
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        licenseToken.approve(address(stakingManager), 2);
+        DEFAULT_DELEGATOR_LICENSE_TOKENS[0] = 2;
+        vm.stopPrank();
+    }
+
+    function test_Initialize() public view {
+        assertEq(address(stakingManager.erc721()), address(licenseToken));
+        assertEq(
+            stakingManager.licenseToStakeConversionFactor(), LICENSE_TO_STAKE_CONVERSION_FACTOR
+        );
+    }
+
+    function test_InitiateValidatorRegistration() public {
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        vm.expectEmit(true, true, true, true);
+        emit IStakingManager.InitiatedStakingValidatorRegistration(
+            DEFAULT_VALIDATION_ID,
+            DEFAULT_VALIDATOR_USER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.expectEmit(true, true, true, true);
+        emit ILicensedStakingManager.ValidatorRegisteredWithLicenses(
+            DEFAULT_VALIDATION_ID, DEFAULT_VALIDATOR_LICENSE_TOKENS
+        );
+        bytes32 validationID = stakingManager.initiateValidatorRegistration{
+            value: MINIMUM_STAKE_AMOUNT
+        }(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            MINIMUM_STAKE_AMOUNT,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        uint256 balanceAfter = DEFAULT_VALIDATOR_USER.balance;
+        // Verify balance subtracted
+        assertEq(balanceAfter, balanceBefore - MINIMUM_STAKE_AMOUNT);
+        // Verify validation ID is set
+        assertTrue(validationID == DEFAULT_VALIDATION_ID);
+        // Verify license token is transferred
+        assertEq(licenseToken.ownerOf(1), address(stakingManager));
+        // Verify staking manager state
+        assertEq(stakingManager.getValidatorStakedLicenseTokens(validationID).length, 1);
+        assertEq(stakingManager.getValidatorStakedLicenseTokens(validationID)[0], 1);
+        assertEq(stakingManager.getValidatorDelegations(validationID).length, 0);
+        assertEq(stakingManager.getLicenseTokenValidator(1), validationID);
+        assertEq(stakingManager.getLicenseTokenDelegator(1), bytes32(0));
+    }
+
+    function test_InitiateDelegatorRegistration() public {
+        // First set up validator stake
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            MINIMUM_STAKE_AMOUNT,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        uint256 totalDelegationAmount = DELEGATION_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR;
+        uint256 newValidatorWeight = (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR)
+            / WEIGHT_TO_VALUE_FACTOR + totalDelegationAmount / WEIGHT_TO_VALUE_FACTOR;
+
+        // Then proceed with delegator registration
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        bytes32 defaultDelegationID = keccak256(abi.encodePacked(DEFAULT_VALIDATION_ID, uint64(0)));
+        vm.expectEmit(true, true, true, true);
+        emit IStakingManager.InitiatedDelegatorRegistration(
+            defaultDelegationID,
+            DEFAULT_VALIDATION_ID,
+            DEFAULT_DELEGATOR_USER,
+            uint64(0),
+            uint64(newValidatorWeight),
+            uint64(totalDelegationAmount / WEIGHT_TO_VALUE_FACTOR),
+            bytes32(0),
+            DEFAULT_DELEGATOR_USER
+        );
+        vm.expectEmit(true, true, true, true);
+        emit ILicensedStakingManager.DelegatorRegisteredWithLicenses(
+            defaultDelegationID, DEFAULT_VALIDATION_ID, DEFAULT_DELEGATOR_LICENSE_TOKENS
+        );
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
+            value: DELEGATION_AMOUNT
+        }(
+            DEFAULT_VALIDATION_ID,
+            DELEGATION_AMOUNT,
+            DEFAULT_DELEGATOR_LICENSE_TOKENS,
+            DEFAULT_DELEGATOR_USER
+        );
+        vm.stopPrank();
+
+        // Verify
+        assertTrue(delegationID == defaultDelegationID);
+        assertEq(licenseToken.ownerOf(2), address(stakingManager));
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 1);
+        assertEq(
+            stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID)[0], defaultDelegationID
+        );
+        assertEq(stakingManager.getLicenseTokenDelegator(2), defaultDelegationID);
+        assertEq(stakingManager.getDelegatorStakedLicenseTokens(defaultDelegationID).length, 1);
+        assertEq(stakingManager.getDelegatorStakedLicenseTokens(defaultDelegationID)[0], 2);
+    }
+
+    function test_ValidatorRemoval() public {
+        // First set up validator so staking manager owns tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            MINIMUM_STAKE_AMOUNT,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        stakingManager.completeValidatorRemoval(0);
+        // Verify license token is returned to the user
+        assertEq(licenseToken.ownerOf(1), DEFAULT_VALIDATOR_USER);
+        // Verify tokens have been unlocked
+        assertEq(DEFAULT_VALIDATOR_USER.balance, balanceBefore + MINIMUM_STAKE_AMOUNT);
+    }
+
+    function test_ValidatorReward() public {
+        // First set up validator so staking manager owns tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            MINIMUM_STAKE_AMOUNT,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        // Skip min stake duration
+        vm.warp(block.timestamp + MINIMUM_STAKE_DURATION);
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        stakingManager.initiateValidatorRemoval(DEFAULT_VALIDATION_ID, false, 0);
+        vm.stopPrank();
+
+        (address rewardRecipient, uint256 claimableRewards) =
+            stakingManager.getValidatorRewardInfo(DEFAULT_VALIDATION_ID);
+        assertEq(rewardRecipient, DEFAULT_VALIDATOR_USER);
+        assertEq(claimableRewards, 2e17);
+
+        Validator memory validator = Validator({
+            status: ValidatorStatus.Completed,
+            nodeID: DEFAULT_NODE_ID,
+            startingWeight: uint64(
+                (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) / WEIGHT_TO_VALUE_FACTOR
+            ),
+            sentNonce: 1,
+            receivedNonce: 1,
+            weight: uint64(
+                (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) / WEIGHT_TO_VALUE_FACTOR
+            ),
+            startTime: uint64(DEFAULT_BLOCK_TIMESTAMP),
+            endTime: uint64(DEFAULT_BLOCK_TIMESTAMP + 365 days)
+        });
+        vm.mockCall(
+            address(validatorManager),
+            abi.encodeWithSelector(IACP99Manager.getValidator.selector),
+            abi.encode(validator)
+        );
+        uint256 balanceBefore = DEFAULT_VALIDATOR_USER.balance;
+        vm.expectEmit(true, true, true, true);
+        emit IStakingManager.ValidatorRewardClaimed(
+            DEFAULT_VALIDATION_ID, DEFAULT_VALIDATOR_USER, 2e17
+        );
+        stakingManager.completeValidatorRemoval(0);
+        // Verify license token is returned to the user
+        assertEq(licenseToken.ownerOf(1), DEFAULT_VALIDATOR_USER);
+        // Verify tokens have been unlocked
+        assertEq(DEFAULT_VALIDATOR_USER.balance, balanceBefore + MINIMUM_STAKE_AMOUNT + 2e17);
+    }
+
+    function test_CompleteDelegatorRemoval() public {
+        // First set up validator so staking manager owns tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            MINIMUM_STAKE_AMOUNT,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+        // Then proceed with delegator registration
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
+            value: DELEGATION_AMOUNT
+        }(
+            DEFAULT_VALIDATION_ID,
+            DELEGATION_AMOUNT,
+            DEFAULT_DELEGATOR_LICENSE_TOKENS,
+            DEFAULT_DELEGATOR_USER
+        );
+        vm.stopPrank();
+
+        stakingManager.completeDelegatorRegistration(delegationID, 0);
+
+        // skip min stake duration
+        vm.warp(block.timestamp + MINIMUM_STAKE_DURATION);
+
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        stakingManager.initiateDelegatorRemoval(delegationID, false, 0);
+
+        uint256 balanceBefore = DEFAULT_DELEGATOR_USER.balance;
+        uint256 expectedRewards = 99000990000000000;
+        vm.expectEmit(true, true, true, true);
+        emit MockNativeCoinMinted(DEFAULT_DELEGATOR_USER, expectedRewards);
+        vm.expectEmit(true, true, true, true);
+        emit INativeTokenLicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        stakingManager.completeDelegatorRemoval(delegationID, 0);
+        assertEq(
+            DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
+        );
+        assertEq(licenseToken.ownerOf(2), DEFAULT_DELEGATOR_USER);
+        vm.stopPrank();
+    }
+}
