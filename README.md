@@ -11,7 +11,6 @@ This repository contains smart contracts that implement a licensed staking syste
 - **Dual Token System**: Combines staking tokens (ERC20/native) with license tokens (ERC721)
 - **Validator Management**: Register and manage validators with configurable parameters
 - **Delegation System**: Allow token holders to delegate to validators
-- **Reward Distribution**: Automated reward calculation and distribution
 - **Configurable Parameters**: Flexible settings for stake amounts, durations, and fees
 
 ## Contract Architecture
