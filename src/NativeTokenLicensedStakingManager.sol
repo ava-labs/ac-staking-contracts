@@ -79,7 +79,6 @@ contract NativeTokenLicensedStakingManager is
         PChainOwner memory disableOwner,
         uint16 delegationFeeBips,
         uint64 minStakeDuration,
-        uint256 stakeAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
     ) external payable nonReentrant returns (bytes32) {
@@ -90,7 +89,7 @@ contract NativeTokenLicensedStakingManager is
             disableOwner: disableOwner,
             delegationFeeBips: delegationFeeBips,
             minStakeDuration: minStakeDuration,
-            tokenStakeAmount: stakeAmount,
+            tokenStakeAmount: msg.value,
             licenseTokenIds: licenseTokenIds,
             rewardRecipient: rewardRecipient
         });
@@ -101,17 +100,16 @@ contract NativeTokenLicensedStakingManager is
      */
     function initiateDelegatorRegistration(
         bytes32 validationID,
-        uint256 delegationAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
     ) external payable nonReentrant returns (bytes32) {
         return _initiateLicensedDelegatorRegistration(
-            validationID, delegationAmount, licenseTokenIds, rewardRecipient
+            validationID, msg.value, licenseTokenIds, rewardRecipient
         );
     }
 
     /**
-     * TODO(comment)
+     * @notice see {LicensedStakingManager-_lockTokens}
      */
     function _lockTokens(
         uint256 value
@@ -120,14 +118,13 @@ contract NativeTokenLicensedStakingManager is
     }
 
     /**
-     * @notice See {StakingManager-_unlock}
-     * Note: Must be guarded with reentrancy guard for safe transfer.
+     * @notice See {LicensedStakingManager-_unlock}
      */
     function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual override {
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
         LicensedStakingManager._unlock(to, value, stakeId);
         payable(to).sendValue(tokenAmount);
-        emit Unlocked(to, tokenAmount);
+        emit NativeTokensUnlocked(to, tokenAmount);
     }
 
     /**

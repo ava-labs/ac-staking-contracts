@@ -125,7 +125,6 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_PCHAIN_OWNER,
             MINIMUM_DELEGATION_FEE_BIPS,
             MINIMUM_STAKE_DURATION,
-            MINIMUM_STAKE_AMOUNT,
             DEFAULT_VALIDATOR_LICENSE_TOKENS,
             DEFAULT_VALIDATOR_USER
         );
@@ -157,7 +156,6 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_PCHAIN_OWNER,
             MINIMUM_DELEGATION_FEE_BIPS,
             MINIMUM_STAKE_DURATION,
-            MINIMUM_STAKE_AMOUNT,
             DEFAULT_VALIDATOR_LICENSE_TOKENS,
             DEFAULT_VALIDATOR_USER
         );
@@ -188,12 +186,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         );
         bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
             value: DELEGATION_AMOUNT
-        }(
-            DEFAULT_VALIDATION_ID,
-            DELEGATION_AMOUNT,
-            DEFAULT_DELEGATOR_LICENSE_TOKENS,
-            DEFAULT_DELEGATOR_USER
-        );
+        }(DEFAULT_VALIDATION_ID, DEFAULT_DELEGATOR_LICENSE_TOKENS, DEFAULT_DELEGATOR_USER);
         vm.stopPrank();
 
         // Verify
@@ -219,7 +212,6 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_PCHAIN_OWNER,
             MINIMUM_DELEGATION_FEE_BIPS,
             MINIMUM_STAKE_DURATION,
-            MINIMUM_STAKE_AMOUNT,
             DEFAULT_VALIDATOR_LICENSE_TOKENS,
             DEFAULT_VALIDATOR_USER
         );
@@ -244,7 +236,6 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_PCHAIN_OWNER,
             MINIMUM_DELEGATION_FEE_BIPS,
             MINIMUM_STAKE_DURATION,
-            MINIMUM_STAKE_AMOUNT,
             DEFAULT_VALIDATOR_LICENSE_TOKENS,
             DEFAULT_VALIDATOR_USER
         );
@@ -311,7 +302,6 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_PCHAIN_OWNER,
             MINIMUM_DELEGATION_FEE_BIPS,
             MINIMUM_STAKE_DURATION,
-            MINIMUM_STAKE_AMOUNT,
             DEFAULT_VALIDATOR_LICENSE_TOKENS,
             DEFAULT_VALIDATOR_USER
         );
@@ -321,12 +311,7 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
         bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
             value: DELEGATION_AMOUNT
-        }(
-            DEFAULT_VALIDATION_ID,
-            DELEGATION_AMOUNT,
-            DEFAULT_DELEGATOR_LICENSE_TOKENS,
-            DEFAULT_DELEGATOR_USER
-        );
+        }(DEFAULT_VALIDATION_ID, DEFAULT_DELEGATOR_LICENSE_TOKENS, DEFAULT_DELEGATOR_USER);
         vm.stopPrank();
 
         stakingManager.completeDelegatorRegistration(delegationID, 0);
@@ -345,7 +330,9 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit MockNativeCoinMinted(DEFAULT_DELEGATOR_USER, expectedRewards);
         vm.expectEmit(true, true, true, true);
-        emit INativeTokenLicensedStakingManager.Unlocked(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        emit INativeTokenLicensedStakingManager.NativeTokensUnlocked(
+            DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT
+        );
         stakingManager.completeDelegatorRemoval(delegationID, 0);
         assertEq(
             DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
