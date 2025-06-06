@@ -49,6 +49,8 @@ abstract contract LicensedStakingManager is
     error TokenAlreadyStaked(uint256 tokenId);
     error TokenNotStaked(uint256 tokenId);
     error InvalidTokenCount(uint256 count);
+    error InvalidTokenStakeAmount(uint256 amount);
+    error InvalidDelegationAmount(uint256 amount);
 
     // solhint-disable ordering
     function _getLicensedStakingManagerStorage()
@@ -91,6 +93,15 @@ abstract contract LicensedStakingManager is
         $._licenseToStakeConversionFactor = licenseToStakeConversionFactor_;
     }
 
+    function _validateTokenStakeAmount(
+        uint256 tokenStakeAmount
+    ) internal view {
+        StakingManagerStorage storage stmStorage = _getStakingManagerStorage();
+        if (tokenStakeAmount < stmStorage._weightToValueFactor) {
+            revert InvalidTokenStakeAmount(tokenStakeAmount);
+        }
+    }
+
     /**
      * @notice See {ILicensedStakingManager-initiateLicensedValidatorRegistration}
      */
@@ -108,6 +119,7 @@ abstract contract LicensedStakingManager is
         if (licenseTokenIds.length == 0) {
             revert InvalidTokenCount(licenseTokenIds.length);
         }
+        _validateTokenStakeAmount(tokenStakeAmount);
 
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
         // Calculate total stake value based on number of tokens
@@ -146,6 +158,7 @@ abstract contract LicensedStakingManager is
         if (licenseTokenIds.length == 0) {
             revert InvalidTokenCount(licenseTokenIds.length);
         }
+        _validateTokenStakeAmount(delegationAmount);
 
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
 
