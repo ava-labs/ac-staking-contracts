@@ -82,7 +82,7 @@ contract NativeTokenLicensedStakingManager is
         uint256 stakeAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
-    ) external nonReentrant returns (bytes32) {
+    ) external payable nonReentrant returns (bytes32) {
         return _initiateLicensedValidatorRegistration({
             nodeID: nodeID,
             blsPublicKey: blsPublicKey,
@@ -104,7 +104,7 @@ contract NativeTokenLicensedStakingManager is
         uint256 delegationAmount,
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
-    ) external nonReentrant returns (bytes32) {
+    ) external payable nonReentrant returns (bytes32) {
         return _initiateLicensedDelegatorRegistration(
             validationID, delegationAmount, licenseTokenIds, rewardRecipient
         );
@@ -127,6 +127,7 @@ contract NativeTokenLicensedStakingManager is
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
         LicensedStakingManager._unlock(to, value, stakeId);
         payable(to).sendValue(tokenAmount);
+        emit Unlocked(to, tokenAmount);
     }
 
     /**

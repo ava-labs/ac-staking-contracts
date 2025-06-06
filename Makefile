@@ -20,10 +20,10 @@ analyze:
 	slither .
 
 coverage:
-	forge coverage --no-match-coverage "script|test"
+	forge coverage --no-match-coverage "script|test|ERC7201"
 
 coverage-debug:
-	forge coverage --no-match-coverage "script|test" --report debug
+	forge coverage --no-match-coverage "script|test|ERC7201" --report debug
 
 gas-report:
 	forge test --gas-report
