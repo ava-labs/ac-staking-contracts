@@ -26,7 +26,6 @@ This repository contains smart contracts that implement a licensed staking syste
 
 - **Validator Registration**: Process for registering validators with required stake and licenses
 - **Delegator Registration**: Process for delegators to stake with validators
-- **Reward System**: Calculation and distribution of staking rewards
 - **Token Management**: Handling of both staking tokens and license tokens
 
 ### Modifications of existing contracts
