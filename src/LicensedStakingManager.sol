@@ -52,6 +52,7 @@ abstract contract LicensedStakingManager is
     error LicenseTokenAlreadyStaked(uint256 licenseTokenId);
     error InvalidLicenseTokenCount(uint256 count);
     error InvalidTokenStakeAmount(uint256 amount);
+    error InvalidLicenseToStakeConversionFactor(uint256 factor);
 
     // solhint-disable ordering
     function _getLicensedStakingManagerStorage()
@@ -77,6 +78,14 @@ abstract contract LicensedStakingManager is
         IERC721 licenseToken,
         uint256 licenseToStakeConversionFactor_
     ) internal onlyInitializing {
+        // License to stake conversion factor can be zero, but if it's not zero, it must be greater than weight to value factor
+        // to avoid loss of token funds
+        if (
+            licenseToStakeConversionFactor_ > 0
+                && licenseToStakeConversionFactor_ < settings.weightToValueFactor
+        ) {
+            revert InvalidLicenseToStakeConversionFactor(licenseToStakeConversionFactor_);
+        }
         __StakingManager_init(settings);
         __LicensedStakingManager_init_unchained(licenseToken, licenseToStakeConversionFactor_);
     }
