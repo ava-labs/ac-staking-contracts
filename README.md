@@ -2,6 +2,8 @@
 
 A collection of smart contracts for managing staking operations in the AvaCloud ecosystem, supporting both ERC20 and native token staking with license-based validation.
 
+**IMPORTANT:** See [CONSIDERATIONS.md](./CONSIDERATIONS.md) before proceeding with deployment to validate the staking configuration parameters.
+
 ## Overview
 
 This repository contains smart contracts that implement a licensed staking system for validators and delegators. The system requires both staking tokens (either ERC20 or native tokens) and license tokens (ERC721) to participate in the network's proof-of-stake mechanism.

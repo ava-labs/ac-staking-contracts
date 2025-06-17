@@ -58,11 +58,13 @@ contract MockNativeMinter is INativeMinter, Test {
 }
 
 contract MockValidatorManager is IValidatorManager {
+    uint256 public validatorWeight;
+
     function getValidator(
         bytes32
-    ) external pure override returns (Validator memory) {
-        uint256 weight =
-            (MINIMUM_STAKE_AMOUNT + LICENSE_TO_STAKE_CONVERSION_FACTOR) / WEIGHT_TO_VALUE_FACTOR;
+    ) external view override returns (Validator memory) {
+        uint256 weight = validatorWeight;
+
         return Validator({
             status: ValidatorStatus.Active,
             nodeID: DEFAULT_NODE_ID,
@@ -115,8 +117,9 @@ contract MockValidatorManager is IValidatorManager {
         bytes memory,
         PChainOwner memory,
         PChainOwner memory,
-        uint64
-    ) external pure override returns (bytes32) {
+        uint64 weight
+    ) external override returns (bytes32) {
+        validatorWeight = weight;
         return DEFAULT_VALIDATION_ID;
     }
 
@@ -132,8 +135,9 @@ contract MockValidatorManager is IValidatorManager {
 
     function initiateValidatorWeightUpdate(
         bytes32,
-        uint64
-    ) external pure override returns (uint64, bytes32) {
+        uint64 weight
+    ) external override returns (uint64, bytes32) {
+        validatorWeight = weight;
         return (0, bytes32(0));
     }
 
