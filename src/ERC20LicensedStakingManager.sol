@@ -19,6 +19,8 @@ import {PChainOwner} from "@validator-manager/interfaces/IValidatorManager.sol";
 
 /**
  * @dev Implementation of the {IERC20LicensedStakingManager} interface.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 contract ERC20LicensedStakingManager is
     Initializable,

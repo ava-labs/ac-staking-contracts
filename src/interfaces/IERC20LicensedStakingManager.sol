@@ -12,6 +12,8 @@ import {IERC20Mintable} from "@validator-manager/interfaces/IERC20Mintable.sol";
 /**
  * Proof of Stake Validator Manager that stakes ERC20 tokens
  * and requires ERC721 tokens as license for staking.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 interface IERC20LicensedStakingManager is ILicensedStakingManager {
     /**

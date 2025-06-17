@@ -10,6 +10,8 @@ import {IStakingManager} from "@validator-manager/interfaces/IStakingManager.sol
 
 /**
  * @dev Interface for the LicensedStakingManager contract.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 interface ILicensedStakingManager is IStakingManager {
     /**
