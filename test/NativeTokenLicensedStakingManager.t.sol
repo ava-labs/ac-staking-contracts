@@ -338,6 +338,10 @@ contract NativeTokenLicensedStakingManagerTest is Test {
             DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
         );
         assertEq(licenseToken.ownerOf(2), DEFAULT_DELEGATOR_USER);
+        assertEq(
+            DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
+        );
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 0);
         vm.stopPrank();
     }
 }

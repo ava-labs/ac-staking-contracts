@@ -997,9 +997,6 @@ abstract contract StakingManager is
             revert MinStakeDurationNotPassed(uint64(block.timestamp));
         }
 
-        // Once this function completes, the delegation is completed so we can clear it from state now.
-        delete $._delegatorStakes[delegationID];
-
         address rewardRecipient = $._delegatorRewardRecipients[delegationID];
         delete $._delegatorRewardRecipients[delegationID];
 
@@ -1012,6 +1009,10 @@ abstract contract StakingManager is
 
         // Unlock the delegator's stake.
         _unlock(delegator.owner, weightToValue(delegator.weight), delegationID);
+
+        // Once this function completes, the delegation is completed so we can clear it from state now.
+        // It needs to be cleared after the _unlock function so that _unlock has access to the validationID of the delegator
+        delete $._delegatorStakes[delegationID];
 
         emit CompletedDelegatorRemoval(delegationID, validationID, delegationRewards, validatorFees);
     }

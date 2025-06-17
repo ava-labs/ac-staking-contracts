@@ -344,10 +344,17 @@ abstract contract LicensedStakingManager is
             delete $._tokenToDelegation[tokenId];
         }
         delete $._delegatorStakedTokens[delegationID];
+
+        bytes32 validationID =
+            _getStakingManagerStorage()._delegatorStakes[delegationID].validationID;
         // Remove delegationID from validatorDelegations
-        for (uint256 i = 0; i < $._validatorDelegations[delegationID].length; i++) {
-            if ($._validatorDelegations[delegationID][i] == delegationID) {
-                delete $._validatorDelegations[delegationID][i];
+        uint256 validatorDelegationsLength = $._validatorDelegations[validationID].length;
+        for (uint256 i = 0; i < validatorDelegationsLength; i++) {
+            if ($._validatorDelegations[validationID][i] == delegationID) {
+                $._validatorDelegations[validationID][i] =
+                    $._validatorDelegations[validationID][validatorDelegationsLength - 1];
+                $._validatorDelegations[validationID].pop();
+                break;
             }
         }
     }
