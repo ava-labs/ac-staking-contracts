@@ -33,15 +33,15 @@ abstract contract LicensedStakingManager is
         // See `_totalStakeAmount` function on how the total stake amount is calculated
         uint256 _licenseToStakeConversionFactor;
         // Maps validationID to array of staked token IDs for validators
-        mapping(bytes32 => uint256[]) _validatorStakedTokens;
+        mapping(bytes32 validationID => uint256[] licenseTokenIds) _validatorStakedTokens;
         // Maps delegationID to array of staked token IDs for delegators
-        mapping(bytes32 => uint256[]) _delegatorStakedTokens;
+        mapping(bytes32 delegationID => uint256[] licenseTokenIds) _delegatorStakedTokens;
         // Maps token ID to validationID to track which validator staked which token
-        mapping(uint256 => bytes32) _tokenToValidator;
+        mapping(uint256 licenseTokenId => bytes32 validationID) _tokenToValidator;
         // Maps token ID to delegationID to track which delegator staked which token
-        mapping(uint256 => bytes32) _tokenToDelegation;
+        mapping(uint256 licenseTokenId => bytes32 delegationID) _tokenToDelegation;
         // Maps validationID to array of delegationIDs for that validator
-        mapping(bytes32 => bytes32[]) _validatorDelegations;
+        mapping(bytes32 validationID => bytes32[] delegationIDs) _validatorDelegations;
     }
     // solhint-enable private-vars-leading-underscore
 
