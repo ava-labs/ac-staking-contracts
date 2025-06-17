@@ -20,6 +20,8 @@ import {PChainOwner} from "@validator-manager/interfaces/IValidatorManager.sol";
 
 /**
  * @dev Implementation of the {INativeTokenLicensedStakingManager} interface.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 contract NativeTokenLicensedStakingManager is
     Initializable,

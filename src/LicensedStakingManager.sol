@@ -18,6 +18,8 @@ import {StakingManagerSettings} from "@validator-manager/interfaces/IStakingMana
  * This contract adds additional requirement for staking and delegation
  * in shape of ERC721 tokens.
  * ERC721 tokens are licenses that enable users to stake and delegate.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 abstract contract LicensedStakingManager is
     Initializable,
