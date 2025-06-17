@@ -224,7 +224,8 @@ abstract contract LicensedStakingManager is
     ) internal {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
 
-        for (uint256 i = 0; i < licenseTokenIds.length; i++) {
+        uint256 licenseTokenIdsLength = licenseTokenIds.length;
+        for (uint256 i; i < licenseTokenIdsLength; ++i) {
             uint256 tokenId = licenseTokenIds[i];
 
             // Check if token is already staked
@@ -322,7 +323,8 @@ abstract contract LicensedStakingManager is
 
         // Return validator's own tokens
         uint256[] storage validatorTokens = $._validatorStakedTokens[validationID];
-        for (uint256 i = 0; i < validatorTokens.length; i++) {
+        uint256 validatorTokensLength = validatorTokens.length;
+        for (uint256 i; i < validatorTokensLength; ++i) {
             uint256 tokenId = validatorTokens[i];
             $._token.transferFrom(address(this), owner, tokenId);
             delete $._tokenToValidator[tokenId];
@@ -339,7 +341,8 @@ abstract contract LicensedStakingManager is
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
 
         uint256[] storage delegatorTokens = $._delegatorStakedTokens[delegationID];
-        for (uint256 i = 0; i < delegatorTokens.length; i++) {
+        uint256 delegatorTokensLength = delegatorTokens.length;
+        for (uint256 i; i < delegatorTokensLength; ++i) {
             uint256 tokenId = delegatorTokens[i];
             $._token.transferFrom(address(this), owner, tokenId);
             delete $._tokenToDelegation[tokenId];
@@ -350,7 +353,7 @@ abstract contract LicensedStakingManager is
             _getStakingManagerStorage()._delegatorStakes[delegationID].validationID;
         // Remove delegationID from validatorDelegations
         uint256 validatorDelegationsLength = $._validatorDelegations[validationID].length;
-        for (uint256 i = 0; i < validatorDelegationsLength; i++) {
+        for (uint256 i; i < validatorDelegationsLength; ++i) {
             if ($._validatorDelegations[validationID][i] == delegationID) {
                 $._validatorDelegations[validationID][i] =
                     $._validatorDelegations[validationID][validatorDelegationsLength - 1];
