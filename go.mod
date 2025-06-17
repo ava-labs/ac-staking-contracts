@@ -1,6 +1,6 @@
 module github.com/ava-labs/ac-staking-contracts
 
-go 1.23.7
+go 1.23.9
 
 require (
 	github.com/ava-labs/subnet-evm v0.7.3
