@@ -119,6 +119,7 @@ contract NativeTokenLicensedStakingManager is
 
     /**
      * @notice See {LicensedStakingManager-_unlock}
+     * Note: Must be guarded with reentrancy guard for safe transfer.
      */
     function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual override {
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
