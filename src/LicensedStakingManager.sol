@@ -189,9 +189,8 @@ abstract contract LicensedStakingManager is
         uint256[] calldata licenseTokenIds,
         address rewardRecipient
     ) internal returns (bytes32) {
-        if (licenseTokenIds.length == 0) {
-            revert InvalidLicenseTokenCount(licenseTokenIds.length);
-        }
+        // License tokens are not required for delegator registration
+
         _validateTokenStakeAmount(delegationAmount);
         // Calculate total delegation value based on number of tokens
         uint256 totalDelegationAmount = _totalStakeAmount(delegationAmount, licenseTokenIds);
@@ -246,9 +245,11 @@ abstract contract LicensedStakingManager is
             } else {
                 $._delegatorStakedTokens[id].push(tokenId);
                 $._tokenToDelegation[tokenId] = id;
-                // Track this delegation for the validator
-                $._validatorDelegations[validationID].push(id);
             }
+        }
+        if (!isValidator) {
+            // Track this delegation for the validator
+            $._validatorDelegations[validationID].push(id);
         }
     }
 

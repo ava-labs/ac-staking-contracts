@@ -344,4 +344,123 @@ contract NativeTokenLicensedStakingManagerTest is Test {
         assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 0);
         vm.stopPrank();
     }
+
+    function test_CompleteDelegatorRemovalWithZeroLicenses() public {
+        // First set up validator so staking manager owns tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        // Then proceed with delegator registration with zero licenses
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
+            value: DELEGATION_AMOUNT
+        }(DEFAULT_VALIDATION_ID, new uint256[](0), DEFAULT_DELEGATOR_USER);
+        vm.stopPrank();
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 1);
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID)[0], delegationID);
+
+        stakingManager.completeDelegatorRegistration(delegationID, 0);
+
+        // skip min stake duration
+        vm.warp(block.timestamp + MINIMUM_STAKE_DURATION);
+
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        stakingManager.initiateDelegatorRemoval(delegationID, false, 0);
+
+        uint256 balanceBefore = DEFAULT_DELEGATOR_USER.balance;
+        uint256 delegationRewards = DELEGATION_AMOUNT * 10 / 100; // No license tokens, so no additional stake
+        uint256 validatorFee = delegationRewards * MINIMUM_DELEGATION_FEE_BIPS / 10000;
+        uint256 expectedRewards = delegationRewards - validatorFee;
+        vm.expectEmit(true, true, true, true);
+        emit MockNativeCoinMinted(DEFAULT_DELEGATOR_USER, expectedRewards);
+        vm.expectEmit(true, true, true, true);
+        emit INativeTokenLicensedStakingManager.NativeTokensUnlocked(
+            DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT
+        );
+        stakingManager.completeDelegatorRemoval(delegationID, 0);
+        assertEq(
+            DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
+        );
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 0);
+        vm.stopPrank();
+    }
+
+    function test_CompleteDelegatorRemovalWithMultipleLicenses() public {
+        // First set up validator so staking manager owns tokens
+        vm.startPrank(DEFAULT_VALIDATOR_USER);
+        vm.deal(DEFAULT_VALIDATOR_USER, MINIMUM_STAKE_AMOUNT);
+        stakingManager.initiateValidatorRegistration{value: MINIMUM_STAKE_AMOUNT}(
+            DEFAULT_NODE_ID,
+            DEFAULT_BLS_PUBLIC_KEY,
+            DEFAULT_PCHAIN_OWNER,
+            DEFAULT_PCHAIN_OWNER,
+            MINIMUM_DELEGATION_FEE_BIPS,
+            MINIMUM_STAKE_DURATION,
+            DEFAULT_VALIDATOR_LICENSE_TOKENS,
+            DEFAULT_VALIDATOR_USER
+        );
+        vm.stopPrank();
+
+        // Mint additional license tokens to delegator
+        licenseToken.mint(DEFAULT_DELEGATOR_USER, 3);
+        licenseToken.mint(DEFAULT_DELEGATOR_USER, 4);
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        licenseToken.approve(address(stakingManager), 3);
+        licenseToken.approve(address(stakingManager), 4);
+
+        // Create array with multiple license tokens
+        uint256[] memory multipleLicenses = new uint256[](3);
+        multipleLicenses[0] = 2; // Original license
+        multipleLicenses[1] = 3; // Additional license
+        multipleLicenses[2] = 4; // Additional license
+
+        vm.deal(DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT);
+        bytes32 delegationID = stakingManager.initiateDelegatorRegistration{
+            value: DELEGATION_AMOUNT
+        }(DEFAULT_VALIDATION_ID, multipleLicenses, DEFAULT_DELEGATOR_USER);
+        vm.stopPrank();
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 1);
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID)[0], delegationID);
+        // complete delegator registration
+        stakingManager.completeDelegatorRegistration(delegationID, 0);
+
+        // skip min stake duration
+        vm.warp(block.timestamp + MINIMUM_STAKE_DURATION);
+
+        vm.startPrank(DEFAULT_DELEGATOR_USER);
+        stakingManager.initiateDelegatorRemoval(delegationID, false, 0);
+
+        uint256 balanceBefore = DEFAULT_DELEGATOR_USER.balance;
+        uint256 totalStakeAmount = DELEGATION_AMOUNT + (LICENSE_TO_STAKE_CONVERSION_FACTOR * 3); // 3 license tokens
+        uint256 delegationRewards = totalStakeAmount * 10 / 100;
+        uint256 validatorFee = delegationRewards * MINIMUM_DELEGATION_FEE_BIPS / 10000;
+        uint256 expectedRewards = delegationRewards - validatorFee;
+        vm.expectEmit(true, true, true, true);
+        emit MockNativeCoinMinted(DEFAULT_DELEGATOR_USER, expectedRewards);
+        vm.expectEmit(true, true, true, true);
+        emit INativeTokenLicensedStakingManager.NativeTokensUnlocked(
+            DEFAULT_DELEGATOR_USER, DELEGATION_AMOUNT
+        );
+        stakingManager.completeDelegatorRemoval(delegationID, 0);
+        assertEq(
+            DEFAULT_DELEGATOR_USER.balance, balanceBefore + DELEGATION_AMOUNT + expectedRewards
+        );
+        assertEq(licenseToken.ownerOf(2), DEFAULT_DELEGATOR_USER);
+        assertEq(licenseToken.ownerOf(3), DEFAULT_DELEGATOR_USER);
+        assertEq(licenseToken.ownerOf(4), DEFAULT_DELEGATOR_USER);
+        assertEq(stakingManager.getValidatorDelegations(DEFAULT_VALIDATION_ID).length, 0);
+        vm.stopPrank();
+    }
 }
