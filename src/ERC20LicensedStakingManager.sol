@@ -103,10 +103,10 @@ contract ERC20LicensedStakingManager is
      * @notice See {IERC20LicensedStakingManager-initiateValidatorRegistration}
      */
     function initiateValidatorRegistration(
-        bytes memory nodeID,
-        bytes memory blsPublicKey,
-        PChainOwner memory remainingBalanceOwner,
-        PChainOwner memory disableOwner,
+        bytes calldata nodeID,
+        bytes calldata blsPublicKey,
+        PChainOwner calldata remainingBalanceOwner,
+        PChainOwner calldata disableOwner,
         uint16 delegationFeeBips,
         uint64 minStakeDuration,
         uint256 stakeAmount,

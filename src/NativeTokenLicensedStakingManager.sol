@@ -73,10 +73,10 @@ contract NativeTokenLicensedStakingManager is
      * @notice See {INativeTokenLicensedStakingManager-initiateValidatorRegistration}
      */
     function initiateValidatorRegistration(
-        bytes memory nodeID,
-        bytes memory blsPublicKey,
-        PChainOwner memory remainingBalanceOwner,
-        PChainOwner memory disableOwner,
+        bytes calldata nodeID,
+        bytes calldata blsPublicKey,
+        PChainOwner calldata remainingBalanceOwner,
+        PChainOwner calldata disableOwner,
         uint16 delegationFeeBips,
         uint64 minStakeDuration,
         uint256[] calldata licenseTokenIds,
