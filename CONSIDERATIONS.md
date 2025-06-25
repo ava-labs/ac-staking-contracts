@@ -18,3 +18,9 @@ Assume `churnPercent` is `20%`, the current total weight is `1000e6`, `weightToV
 If the total weight drops below `500e6`, no new validator registrations can occur because staking a single NFT requires `100e18` (plus `1e12` for the ERC-20 token requirement), which exceeds the 20% churn limit of the current weight (`500e6 × 20% = 100e6`, i.e., `100e18` stake amount).
 
 **IMPORTANT**: Consult with AvaCloud Client Services team to ensure configuration variables and initial weights are set correctly to minimize the risk of achieving this edge case.
+
+**IMPORTANT**: Be aware that if the `_maximumStakeMultiplier` is set to 1, it may not allow new delegators for a particular validators.
+
+# Meta Transactions
+
+If the support for meta transactions is added in the future to the staking contracts, it is important that change also includes updating the [SafeERC20TransferFrom](https://github.com/ava-labs/icm-contracts/blob/eb0afb7ff59ad4612fa3d5fd67d8b3e7e135bd06/contracts/utilities/SafeERC20TransferFrom.sol#L31-L33) library in the `icm-contracts` repo as it relies on `msg.sender` and it is used in `ERC20LicensedStakingManager`.
