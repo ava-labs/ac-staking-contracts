@@ -285,12 +285,17 @@ abstract contract LicensedStakingManager is
      * @dev Used to unlock license tokens.
      * IMPORTANT: Value parameter is not used and stake tokens should be unlocked in the implementation of the contract.
      */
-    function _unlock(address to, uint256, bytes32 stakeId) internal virtual override {
+    function _unlock(
+        address to,
+        uint256,
+        bytes32 stakeId,
+        bytes32 validationID
+    ) internal virtual override {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
         if ($._validatorStakedTokens[stakeId].length > 0) {
             _returnValidatorTokens(stakeId, to);
         } else {
-            _returnDelegatorTokens(stakeId, to);
+            _returnDelegatorTokens(stakeId, to, validationID);
         }
     }
 
@@ -338,8 +343,13 @@ abstract contract LicensedStakingManager is
      * @notice Returns ERC721 tokens to the delegator
      * @param delegationID The delegation ID
      * @param owner The address to return tokens to
+     * @param validationID The validation ID
      */
-    function _returnDelegatorTokens(bytes32 delegationID, address owner) internal {
+    function _returnDelegatorTokens(
+        bytes32 delegationID,
+        address owner,
+        bytes32 validationID
+    ) internal {
         LicensedStakingManagerStorage storage $ = _getLicensedStakingManagerStorage();
 
         uint256[] storage delegatorTokens = $._delegatorStakedTokens[delegationID];
@@ -351,8 +361,6 @@ abstract contract LicensedStakingManager is
         }
         delete $._delegatorStakedTokens[delegationID];
 
-        bytes32 validationID =
-            _getStakingManagerStorage()._delegatorStakes[delegationID].validationID;
         // Remove delegationID from validatorDelegations
         uint256 validatorDelegationsLength = $._validatorDelegations[validationID].length;
         for (uint256 i; i < validatorDelegationsLength; ++i) {

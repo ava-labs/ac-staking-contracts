@@ -6,8 +6,8 @@
 // Version that was modified is from release validator-manager-v2.0.0
 // Original code is from https://github.com/ava-labs/icm-contracts/blob/validator-manager-v2.0.0/contracts/validator-manager/StakingManager.sol
 // Modifications:
-// * function _unlock(address to, uint256 value) internal virtual signature changed to function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual;
-// * invocations of _unlock changed to include stakeID parameter
+// * function _unlock(address to, uint256 value) internal virtual signature changed to function _unlock(address to, uint256 value, bytes32 stakeId, bytes32 validationId) internal virtual;
+// * invocations of _unlock changed to include stakeID and validationID parameters
 pragma solidity 0.8.25;
 
 import {ValidatorMessages} from "@validator-manager/ValidatorMessages.sol";
@@ -419,7 +419,7 @@ abstract contract StakingManager is
         }
 
         // The stake is unlocked whether the validation period is completed or invalidated.
-        _unlock(owner, weightToValue(validator.startingWeight), validationID);
+        _unlock(owner, weightToValue(validator.startingWeight), validationID, bytes32(0));
 
         return validationID;
     }
@@ -637,9 +637,15 @@ abstract contract StakingManager is
      * @notice Unlocks token to a specific address.
      * @param to Address to send token to.
      * @param value Number of tokens to lock.
-     * @param stakeId Validation/Degation ID
+     * @param stakeId Validation/Delegation ID
+     * @param validationId Validation ID related to Delegation ID
      */
-    function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual;
+    function _unlock(
+        address to,
+        uint256 value,
+        bytes32 stakeId,
+        bytes32 validationId
+    ) internal virtual;
 
     /**
      * @notice Initiates delegator registration by updating the validator's weight and storing the delegation information.
@@ -997,6 +1003,9 @@ abstract contract StakingManager is
             revert MinStakeDurationNotPassed(uint64(block.timestamp));
         }
 
+        // Once this function completes, the delegation is completed so we can clear it from state now.
+        delete $._delegatorStakes[delegationID];
+
         address rewardRecipient = $._delegatorRewardRecipients[delegationID];
         delete $._delegatorRewardRecipients[delegationID];
 
@@ -1008,11 +1017,7 @@ abstract contract StakingManager is
             _withdrawDelegationRewards(rewardRecipient, delegationID, validationID);
 
         // Unlock the delegator's stake.
-        _unlock(delegator.owner, weightToValue(delegator.weight), delegationID);
-
-        // Once this function completes, the delegation is completed so we can clear it from state now.
-        // It needs to be cleared after the _unlock function so that _unlock has access to the validationID of the delegator
-        delete $._delegatorStakes[delegationID];
+        _unlock(delegator.owner, weightToValue(delegator.weight), delegationID, validationID);
 
         emit CompletedDelegatorRemoval(delegationID, validationID, delegationRewards, validatorFees);
     }
