@@ -12,13 +12,13 @@
 // Previous signature
 function _unlock(address to, uint256 value) internal virtual;
 // New Signature
-function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual;
+function _unlock(address to, uint256 value, bytes32 stakeId, bytes32 validationID) internal virtual;
 ```
 
 * invocations of _unlock changed to include stakeID parameter
 ```solidity
 // in `completeValidatorRemoval`
- _unlock(owner, weightToValue(validator.startingWeight), validationID);
+ _unlock(owner, weightToValue(validator.startingWeight), validationID, bytes32(0));
 // in `completeDelegatorRemoval`
-_unlock(delegator.owner, weightToValue(delegator.weight), delegationID);
+_unlock(delegator.owner, weightToValue(delegator.weight), delegationID, validationID);
 ```

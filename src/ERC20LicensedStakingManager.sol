@@ -165,9 +165,14 @@ contract ERC20LicensedStakingManager is
      * @notice See {LicensedStakingManager-_unlock}
      * Note: Must be guarded with reentrancy guard for safe transfer.
      */
-    function _unlock(address to, uint256 value, bytes32 stakeId) internal virtual override {
+    function _unlock(
+        address to,
+        uint256 value,
+        bytes32 stakeId,
+        bytes32 validationID
+    ) internal virtual override {
         uint256 tokenAmount = _tokenAmountFromStakeAmount(stakeId, value);
-        LicensedStakingManager._unlock(to, value, stakeId);
+        LicensedStakingManager._unlock(to, value, stakeId, validationID);
         _getERC20LicensedStakingManagerStorage()._token.safeTransfer(to, tokenAmount);
         emit ERC20TokensUnlocked(to, tokenAmount);
     }
