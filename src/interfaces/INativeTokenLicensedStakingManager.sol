@@ -11,6 +11,8 @@ import {PChainOwner} from "@validator-manager/interfaces/IACP99Manager.sol";
 /**
  * Proof of Stake Validator Manager that stakes native tokens
  * and requires ERC721 tokens as license for staking.
+ *
+ * @custom:security-contact security.alert@avacloud.io
  */
 interface INativeTokenLicensedStakingManager is ILicensedStakingManager {
     /**
