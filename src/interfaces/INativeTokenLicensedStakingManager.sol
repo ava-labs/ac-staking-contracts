@@ -13,6 +13,11 @@ import {PChainOwner} from "@validator-manager/interfaces/IACP99Manager.sol";
  * and requires ERC721 tokens as license for staking.
  */
 interface INativeTokenLicensedStakingManager is ILicensedStakingManager {
+    /**
+     * @notice Emitted when native tokens are unlocked.
+     * @param to The address of the recipient.
+     * @param amount The amount of native tokens unlocked.
+     */
     event NativeTokensUnlocked(address indexed to, uint256 amount);
 
     /**

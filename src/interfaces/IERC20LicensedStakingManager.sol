@@ -14,6 +14,11 @@ import {IERC20Mintable} from "@validator-manager/interfaces/IERC20Mintable.sol";
  * and requires ERC721 tokens as license for staking.
  */
 interface IERC20LicensedStakingManager is ILicensedStakingManager {
+    /**
+     * @notice Emitted when ERC20 tokens are unlocked.
+     * @param to The address of the recipient.
+     * @param amount The amount of ERC20 tokens unlocked.
+     */
     event ERC20TokensUnlocked(address indexed to, uint256 amount);
 
     /**
@@ -58,6 +63,7 @@ interface IERC20LicensedStakingManager is ILicensedStakingManager {
 
     /**
      * @notice Returns the ERC20 token being staked
+     * @return The ERC20 token being staked
      */
     function erc20() external view returns (IERC20Mintable);
 }

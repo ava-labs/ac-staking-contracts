@@ -142,6 +142,7 @@ contract ERC20LicensedStakingManager is
 
     /**
      * @notice Returns the ERC20 token being staked
+     * @return The ERC20 token being staked
      */
     function erc20() external view returns (IERC20Mintable) {
         return _getERC20LicensedStakingManagerStorage()._token;
