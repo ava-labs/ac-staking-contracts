@@ -29,7 +29,7 @@ function extract_commit() {
 }
 
 # Don't export them as they're used in the context of other calls
-SUBNET_EVM_VERSION=${SUBNET_EVM_VERSION:-$(extract_commit "$(getDepVersion github.com/ava-labs/subnet-evm)")}
+SUBNET_EVM_VERSION=${SUBNET_EVM_VERSION:-$(getDepVersion github.com/ava-labs/avalanchego/graft/subnet-evm)}
 
 export ARCH=$(uname -m)
 [ $ARCH = x86_64 ] && ARCH=amd64
@@ -60,8 +60,8 @@ if [ "$HELP" = true ]; then
 fi
 
 # Install abigen
-echo "Building subnet-evm abigen"
-go install github.com/ava-labs/subnet-evm/cmd/abigen@${SUBNET_EVM_VERSION}
+echo "Building avalanchego graft subnet-evm abigen"
+go install github.com/ava-labs/avalanchego/graft/subnet-evm/cmd/abigen@${SUBNET_EVM_VERSION}
 
 # Solc does not recursively expand remappings, so we must construct them manually
 remappings=$(cat $REPO_BASE_PATH/remappings.txt)
