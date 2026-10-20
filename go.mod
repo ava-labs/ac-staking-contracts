@@ -2,7 +2,7 @@ module github.com/ava-labs/ac-staking-contracts
 
 go 1.24.11
 
-toolchain go1.24.12
+toolchain go1.26.10
 
 replace github.com/ava-labs/avalanchego/graft/coreth => github.com/ava-labs/avalanchego/graft/coreth v0.0.0-20251203215505-70148edc6eca
 
