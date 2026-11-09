@@ -8,8 +8,12 @@ on:
 env:
   FOUNDRY_PROFILE: ci
 
+permissions: {}
+
 jobs:
   check:
+    permissions:
+      contents: read
     strategy:
       fail-fast: true
 
@@ -19,6 +23,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
